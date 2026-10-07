@@ -16,6 +16,7 @@ async function main() {
   if (mode !== "honest" && mode !== "rogue") throw new Error("usage: demo.ts honest|rogue");
   const dep = loadDeployment();
   const provider = new JsonRpcProvider(RPC, dep.chainId, { staticNetwork: true });
+  provider.pollingInterval = 250; // ethers polls receipts every 4 s by default; Monad finalizes in under 1 s
   const actor = loadActors().agents[mode === "honest" ? 0 : 1];
   const wallet = new Wallet(actor.key, provider);
   const agent = new WitnessAgent(wallet, dep, BigInt(actor.agentId));
@@ -43,7 +44,7 @@ async function main() {
 
   const pool = new Contract(dep.witnessPool, poolAbi, provider);
   for (;;) {
-    const round = await pool.getRound(requestHash);
+    const round = await retry(() => pool.getRound(requestHash));
     if (round.finalized) {
       log(t0, `verdict ${round.verdict} (${round.verdict >= 50 ? "PASS" : "FAIL"}), votes [${round.scores.join(", ")}]`);
       break;
@@ -52,9 +53,21 @@ async function main() {
     await sleep(300);
   }
   const registry = new Contract(dep.validationRegistry, validationAbi, provider);
-  const [count, avg] = await registry.getSummary(agent.agentId, [dep.witnessPool], "witness");
+  const [count, avg] = await retry(() => registry.getSummary(agent.agentId, [dep.witnessPool], "witness"));
   console.log(`agent ${agent.agentId} validation summary: ${count} validated actions, average ${avg}/100`);
   console.log(`explorer: request ${requestHash}`);
+}
+
+// Monad's public RPC is load-balanced; a read can land on a node a block behind and revert.
+async function retry<T>(fn: () => Promise<T>, tries = 5): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i >= tries) throw e;
+      await sleep(300);
+    }
+  }
 }
 
 function log(t0: number, msg: string, tx?: string) {

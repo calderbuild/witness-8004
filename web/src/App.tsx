@@ -17,7 +17,7 @@ import {
 import type { Intent } from "../../sdk/intent";
 
 const LEDGER_SIZE = 20;
-const POLL_MS = 3000;
+const POLL_MS = 2000;
 
 const KNOWN: Record<string, string> = {
   [getAddress(dep.demoUSD)]: "dUSD token",
@@ -41,26 +41,37 @@ export default function App() {
 
   useEffect(() => {
     let stop = false;
+    let failures = 0;
     async function tick() {
       try {
         const hashes = (await listRequestHashes()).slice(0, LEDGER_SIZE);
-        const next = await Promise.all(hashes.map(loadRound));
+        // Monad's public RPC is load-balanced: a request one node already lists can revert on a
+        // node a block behind. Skip that round for this poll; it shows up on the next one.
+        const settled = await Promise.allSettled(hashes.map(loadRound));
+        const next = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+        if (hashes.length && !next.length) throw (settled[0] as PromiseRejectedResult).reason;
         if (stop) return;
         // A stamp presses in when a verdict lands while the page is open.
         const prev = seen.current;
         if (prev) setFresh(new Set(next.filter((r) => r.finalized && prev.get(r.hash) !== true).map((r) => r.hash)));
         seen.current = new Map(next.map((r) => [r.hash, r.finalized]));
         setRounds(next);
+        failures = 0;
         setError(null);
         setLoaded(true);
+        // The rolls lag a block behind on a lagging RPC node at worst; keep the last good values.
         const ids = [...new Set(next.map((r) => r.agentId))];
-        const [a, v] = await Promise.all([Promise.all(ids.map(loadAgent)), loadValidators()]);
-        if (!stop) {
-          setAgents(a);
-          setValidators(v);
-        }
+        Promise.all([Promise.all(ids.map(loadAgent)), loadValidators()])
+          .then(([a, v]) => {
+            if (stop) return;
+            setAgents(a);
+            setValidators(v);
+          })
+          .catch((e) => console.warn("agents/validators refresh failed, retrying next poll", e));
       } catch (e) {
-        if (!stop) setError(`Monad testnet RPC did not answer (${(e as Error).message.slice(0, 80)}). Retrying every 3 seconds.`);
+        // One failed poll is usually a load-balanced RPC node a block behind; say so only when it repeats.
+        console.warn("poll failed", e);
+        if (!stop && ++failures >= 2) setError(`Monad testnet RPC did not answer (${(e as Error).message.slice(0, 80)}). Retrying every 3 seconds.`);
       }
     }
     tick();
@@ -176,11 +187,22 @@ type Row = { label: string; declared: string; executed: string; ok: boolean | nu
 
 function RoundForm({ round, pressed }: { round: Round; pressed: boolean }) {
   const [detail, setDetail] = useState<Detail | null>(null);
+  // Re-read until the verdict's logs are visible: the RPC node that answered may be a block behind.
   useEffect(() => {
     let live = true;
-    loadDetail(round).then((d) => live && setDetail(d));
+    let timer: ReturnType<typeof setTimeout>;
+    const load = () =>
+      loadDetail(round)
+        .then((d) => {
+          if (!live) return;
+          setDetail(d);
+          if (!round.finalized || !d.finalizeTx) timer = setTimeout(load, 2000);
+        })
+        .catch(() => live && (timer = setTimeout(load, 2000)));
+    load();
     return () => {
       live = false;
+      clearTimeout(timer);
     };
   }, [round]);
 

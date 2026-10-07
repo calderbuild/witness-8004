@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Witness demo stage</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --paper: #e8edf1; --ink: #1b2a4a; --graphite: #8f9bab; --seal: #e0614b; --ledger: #5fc79a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); }
+  .stage { display: grid; grid-template-columns: 700px 1fr; height: 100vh; }
+  .term { display: grid; grid-template-rows: 1fr 1fr; background: var(--ink); color: #dfe6ee; font: 15px/1.45 "Courier Prime", monospace; }
+  .pane { display: flex; flex-direction: column; min-height: 0; padding: 16px 20px; }
+  .pane + .pane { border-top: 2px solid #2c3d61; }
+  .pane h2 { margin: 0 0 8px; font: 600 14px "Barlow Condensed", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--graphite); }
+  .lines { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; white-space: pre-wrap; word-break: break-all; }
+  .pass { color: var(--ledger); font-weight: 700; }
+  .fail { color: var(--seal); font-weight: 700; }
+  .dim { color: var(--graphite); }
+  iframe { width: 100%; height: 100%; border: 0; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="term">
+    <section class="pane"><h2>Validator node &middot; 3 bonded keys</h2><div class="lines" id="node"></div></section>
+    <section class="pane"><h2>Agent</h2><div class="lines" id="agent"></div></section>
+  </div>
+  <iframe src="https://witness-8004.vercel.app/" title="Witness explorer"></iframe>
+</div>
+<script>
+  const style = (t) => /FAIL|slash|ATTACKER|failed:/.test(t) ? "fail" : /PASS|score 100|paid vendor/.test(t) ? "pass" : /^\$ /.test(t) ? "dim" : "";
+  new EventSource("/events").onmessage = (e) => {
+    const { src, text } = JSON.parse(e.data);
+    const box = document.getElementById(src);
+    const div = document.createElement("div");
+    div.textContent = text.replace(/0x[0-9a-fA-F]{20,}/g, (h) => h.slice(0, 10) + ".." + h.slice(-4));
+    div.className = style(text);
+    box.appendChild(div);
+    while (box.children.length > 40) box.firstChild.remove();
+  };
+</script>
+</body>
+</html>

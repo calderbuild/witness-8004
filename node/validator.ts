@@ -17,6 +17,7 @@ const VOTE_GAS = 750_000n; // finalize measured at ~540k on testnet with the can
 
 const dep = loadDeployment();
 const provider = new JsonRpcProvider(RPC, dep.chainId, { staticNetwork: true });
+provider.pollingInterval = 250; // ethers polls receipts every 4 s by default; Monad finalizes in under 1 s
 const liar = process.env.LIAR === undefined ? -1 : Number(process.env.LIAR);
 const signers = loadActors().validators.map((k) => new Wallet(k, provider));
 const registryIface = new Interface(validationAbi);
@@ -30,18 +31,24 @@ async function main() {
   console.log(`witness node: ${signers.length} validators, pool ${dep.witnessPool}${liar >= 0 ? `, LIAR=${liar}` : ""}`);
   let cursor = Number(process.env.FROM_BLOCK ?? (await provider.getBlockNumber()) - 20);
   for (;;) {
-    const head = await provider.getBlockNumber();
-    while (cursor <= head) {
-      const to = Math.min(cursor + MAX_LOG_RANGE - 1, head);
-      const logs = await provider.getLogs({
-        address: [dep.validationRegistry, dep.witnessPool],
-        fromBlock: cursor,
-        toBlock: to,
-      });
-      for (const log of logs) await handle(log);
-      cursor = to + 1;
+    // Monad's public RPC is load-balanced and a read can hit a node a block behind. A failed window
+    // is retried from the same cursor on the next poll; hasVoted keeps the retry from double-voting.
+    try {
+      const head = await provider.getBlockNumber();
+      while (cursor <= head) {
+        const to = Math.min(cursor + MAX_LOG_RANGE - 1, head);
+        const logs = await provider.getLogs({
+          address: [dep.validationRegistry, dep.witnessPool],
+          fromBlock: cursor,
+          toBlock: to,
+        });
+        for (const log of logs) await handle(log);
+        cursor = to + 1;
+      }
+      await expire();
+    } catch (e) {
+      console.log(`[retry]   RPC read failed, retrying from block ${cursor}: ${(e as Error).message.slice(0, 80)}`);
     }
-    await expire();
     await sleep(POLL_MS);
   }
 }
@@ -67,8 +74,8 @@ async function handle(log: Log) {
   if (ev?.name === "ExecutionLinked") {
     const p = pending.get(ev.args.requestHash);
     if (!p) return; // request committed before this node started; FROM_BLOCK can replay it
-    pending.delete(ev.args.requestHash);
     await validate(ev.args.requestHash, ev.args.txHash, p);
+    pending.delete(ev.args.requestHash);
   } else if (ev?.name === "Finalized") {
     console.log(`[final]   ${short(ev.args.requestHash)} verdict ${ev.args.verdict} ${ev.args.passed ? "PASS" : "FAIL"}`);
   } else if (ev?.name === "Slashed") {
@@ -79,15 +86,18 @@ async function handle(log: Log) {
 async function validate(requestHash: string, txHash: string, p: Pending) {
   const [tx, receipt] = await Promise.all([provider.getTransaction(txHash), provider.getTransactionReceipt(txHash)]);
   if (!tx || !receipt) {
+    // A lagging RPC node may not see a fresh tx yet: retry (via the main loop) before failing it.
+    if (Date.now() - p.seenAt < 30_000) throw new Error(`tx ${txHash} not visible yet`);
     await voteAll(requestHash, { score: 0, checks: [{ name: "tx exists", ok: false, expected: txHash, actual: "not found" }] });
     return;
   }
   const block = await provider.getBlock(receipt.blockNumber);
+  if (!block) throw new Error(`block ${receipt.blockNumber} not visible yet`);
   const verdict = verifyExecution(
     p.intent,
     { from: tx.from, to: tx.to, data: tx.data, value: tx.value, blockNumber: receipt.blockNumber },
     receipt.status === 1,
-    { requestBlock: p.requestBlock, txTimestamp: block!.timestamp },
+    { requestBlock: p.requestBlock, txTimestamp: block.timestamp },
   );
   const failed = verdict.checks.filter((c) => !c.ok).map((c) => c.name);
   console.log(`[check]   ${short(requestHash)} score ${verdict.score}${failed.length ? ` failed: ${failed.join(", ")}` : ""}`);
@@ -99,9 +109,9 @@ async function expire() {
   const now = Math.floor(Date.now() / 1000);
   for (const [hash, p] of pending) {
     if (p.intent.expiresAt >= now) continue;
-    pending.delete(hash);
     console.log(`[expire]  ${short(hash)} no execution linked before expiry`);
     await voteAll(hash, { score: 0, checks: [{ name: "execution linked", ok: false, expected: `before ${p.intent.expiresAt}`, actual: "none" }] });
+    pending.delete(hash);
   }
 }
 
