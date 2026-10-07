@@ -86,6 +86,7 @@ Example round (rogue agent #2044 commits to paying the vendor 25 dUSD, pays 250 
 | `node/validator.ts` | Validator node: follows the chain in 100-block windows, checks, votes; `LIAR=n` makes validator n always vote 100 |
 | `agents/demo.ts` | Honest and rogue procurement agents |
 | `agents/qwen.ts`, `agents/fixtures/` | Qwen 3.8 Max procurement agent: commits from the purchase order, then pays the invoice |
+| `docs/qwen-article.md` | Write-up: how the Qwen agent uses Witness, and what happened when I attacked it |
 | `web/` | Explorer (Vite + React + ethers), deployed on Vercel |
 | `test/` | Hardhat tests for the contracts and for `verifyExecution` |
 
