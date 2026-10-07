@@ -1,0 +1,21 @@
+{
+  "network": "monadTestnet",
+  "chainId": 10143,
+  "startBlock": 68945177,
+  "deployer": "0x636011edE26fCe9cb675Ac42543d69f3b9CcA9Dc",
+  "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+  "reputationRegistry": "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+  "validationRegistry": "0x642E37FEFA1d3C33B1EA972A42629c0Cf52F47B4",
+  "witnessPool": "0xfB82B4e6366fAd5765AD2776B7EfB427183Ed077",
+  "demoUSD": "0xea99c4ae15e83dFd325F747880D143d37388e6FF",
+  "deployTxs": {
+    "validationRegistry": "0x43433c3484632a497fa480f74f11ace3c6f077f4b2a01999649ec49c884552ae",
+    "witnessPool": "0x765065bba2e8eccb6e4f7ce70a2e304ccdf05df9ba5c65a86c035fb58b8e9202",
+    "demoUSD": "0xc50e5ba3ddbafd9a4736bd322b7e337b769875a63bfacd44a6292a2bdf9801cf"
+  },
+  "params": {
+    "minBond": "500000000000000000",
+    "quorum": 3,
+    "slashBps": 1000
+  }
+}
