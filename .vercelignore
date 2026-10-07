@@ -1,0 +1,9 @@
+.env
+.keys
+node_modules
+web/node_modules
+cache
+artifacts
+typechain-types
+reference
+web/dist

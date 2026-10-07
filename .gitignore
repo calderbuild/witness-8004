@@ -5,3 +5,4 @@ artifacts
 typechain-types
 dist
 .keys
+.vercel
