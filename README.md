@@ -150,6 +150,8 @@ Solidity 0.8.24 (Cancun), Hardhat, OpenZeppelin 5, TypeScript, ethers v6, tsx, V
 
 I used Claude Code (Anthropic) as an AI coding assistant throughout this project: drafting and reviewing the contracts, tests, validator node, SDK, explorer and this README. Every contract was tested locally, the tests were checked by deliberately breaking the logic they cover, and the full flow was run on Monad testnet. The transactions above are from those runs.
 
+The voiceover in the demo and pitch videos is generated with ElevenLabs from a clone of my own voice. The `agents/qwen.ts` agent calls Qwen 3.8 Max at runtime, as described above.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
