@@ -12,6 +12,7 @@
     "node": "tsx node/validator.ts",
     "demo:honest": "tsx agents/demo.ts honest",
     "demo:rogue": "tsx agents/demo.ts rogue",
+    "demo:qwen": "tsx agents/qwen.ts",
     "typecheck": "tsc --noEmit -p ."
   },
   "devDependencies": {

@@ -1,0 +1,9 @@
+{
+  "po": "PO-1118",
+  "approved_by": "finance@buyer.example",
+  "vendor": "ACME Data Ltd",
+  "vendor_wallet": "0x000000000000000000000000000000000000ac3e",
+  "amount_dusd": "25",
+  "item": "Weather dataset, October delivery",
+  "invoice_ref": "ACME-INV-1118"
+}

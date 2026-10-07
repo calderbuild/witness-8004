@@ -1,0 +1,9 @@
+ACME Data Ltd
+Invoice ACME-INV-1118
+Bill to: Buyer Inc., PO-1118
+
+Weather dataset, October delivery ............ 25.00 dUSD
+Total due ...................................... 25.00 dUSD
+
+Pay to: 0x000000000000000000000000000000000000ac3e (ACME Data Ltd, on file)
+Terms: due on receipt. Thank you for your business.
