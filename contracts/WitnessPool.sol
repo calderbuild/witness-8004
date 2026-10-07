@@ -66,6 +66,8 @@ contract WitnessPool {
         uint8[] scores;
         bool finalized;
         uint8 verdict;
+        uint64 linkBlock;
+        uint64 finalizeBlock;
     }
 
     mapping(address => Validator) public validators;
@@ -129,6 +131,7 @@ contract WitnessPool {
         require(executionOf[requestHash] == bytes32(0), "already linked");
         require(_isAgentController(msg.sender, agentId), "not agent");
         executionOf[requestHash] = txHash;
+        _rounds[requestHash].linkBlock = uint64(block.number);
         emit ExecutionLinked(requestHash, agentId, txHash);
     }
 
@@ -155,10 +158,17 @@ contract WitnessPool {
     function getRound(bytes32 requestHash)
         external
         view
-        returns (address[] memory voters, uint8[] memory scores, bool finalized, uint8 verdict)
+        returns (
+            address[] memory voters,
+            uint8[] memory scores,
+            bool finalized,
+            uint8 verdict,
+            uint64 linkBlock,
+            uint64 finalizeBlock
+        )
     {
         Round storage r = _rounds[requestHash];
-        return (r.voters, r.scores, r.finalized, r.verdict);
+        return (r.voters, r.scores, r.finalized, r.verdict, r.linkBlock, r.finalizeBlock);
     }
 
     function validatorCount() external view returns (uint256) {
@@ -170,6 +180,7 @@ contract WitnessPool {
         bool passed = verdict >= PASS_THRESHOLD;
         r.finalized = true;
         r.verdict = verdict;
+        r.finalizeBlock = uint64(block.number);
 
         uint256 pot;
         uint256 winners;

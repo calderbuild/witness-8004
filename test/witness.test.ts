@@ -82,6 +82,12 @@ describe("WitnessPool", () => {
     const [count, avg] = await ctx.registry.getSummary(ctx.agentId, [], "witness");
     expect(count).to.equal(1n);
     expect(avg).to.equal(100);
+
+    const round = await ctx.pool.getRound(h);
+    const finalizeBlock = (await (await last).wait())!.blockNumber;
+    expect(round.finalizeBlock).to.equal(finalizeBlock);
+    expect(round.linkBlock).to.be.greaterThan(0n);
+    expect(await ctx.registry.requestBlock(h)).to.be.greaterThan(0n);
   });
 
   it("rogue action: quorum fails it and the validator who covered for it is slashed to the others", async () => {

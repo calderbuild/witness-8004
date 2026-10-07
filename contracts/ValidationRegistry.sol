@@ -43,6 +43,9 @@ contract ValidationRegistry {
     mapping(bytes32 => ValidationStatus) private _validations;
     mapping(uint256 => bytes32[]) private _agentValidations;
     mapping(address => bytes32[]) private _validatorRequests;
+    // Not in the reference: lets clients fetch the ValidationRequest event with a one-block
+    // eth_getLogs, since Monad RPCs cap log queries at ~100 blocks.
+    mapping(bytes32 => uint256) public requestBlock;
 
     constructor(address identityRegistry_) {
         require(identityRegistry_ != address(0), "bad identity");
@@ -82,6 +85,7 @@ contract ValidationRegistry {
         });
         _agentValidations[agentId].push(requestHash);
         _validatorRequests[validatorAddress].push(requestHash);
+        requestBlock[requestHash] = block.number;
 
         emit ValidationRequest(validatorAddress, agentId, requestURI, requestHash);
     }
