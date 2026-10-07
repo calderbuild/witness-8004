@@ -9,7 +9,7 @@ import { WitnessAgent } from "../sdk/client";
 import { loadDeployment, RPC } from "./common";
 
 const KEYS = ".keys/actors.json";
-const GAS_FLOAT = parseEther("1");
+const GAS_FLOAT = parseEther("2");
 
 type Actors = { validators: string[]; agents: { name: string; key: string; agentId?: string }[] };
 

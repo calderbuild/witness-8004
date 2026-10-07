@@ -37,7 +37,7 @@ export default function App() {
   const [validators, setValidators] = useState<ValidatorInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const seen = useRef<Set<string> | null>(null);
+  const seen = useRef<Map<string, boolean> | null>(null); // hash -> finalized, from the previous poll
 
   useEffect(() => {
     let stop = false;
@@ -46,8 +46,10 @@ export default function App() {
         const hashes = (await listRequestHashes()).slice(0, LEDGER_SIZE);
         const next = await Promise.all(hashes.map(loadRound));
         if (stop) return;
-        if (seen.current) setFresh(new Set(hashes.filter((h) => !seen.current!.has(h))));
-        seen.current = new Set(hashes);
+        // A stamp presses in when a verdict lands while the page is open.
+        const prev = seen.current;
+        if (prev) setFresh(new Set(next.filter((r) => r.finalized && prev.get(r.hash) !== true).map((r) => r.hash)));
+        seen.current = new Map(next.map((r) => [r.hash, r.finalized]));
         setRounds(next);
         setError(null);
         setLoaded(true);
