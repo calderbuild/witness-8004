@@ -7,7 +7,12 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "deploy:testnet": "hardhat run scripts/deploy.ts --network monadTestnet"
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network monadTestnet",
+    "setup:actors": "tsx scripts/setup-actors.ts",
+    "node": "tsx node/validator.ts",
+    "demo:honest": "tsx agents/demo.ts honest",
+    "demo:rogue": "tsx agents/demo.ts rogue",
+    "typecheck": "tsc --noEmit -p ."
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
